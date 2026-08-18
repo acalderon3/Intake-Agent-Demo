@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Intake Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F5F6F4;
+    --surface:#FFFFFF;
+    --surface-alt:#EEF1EC;
+    --ink:#1B211D;
+    --ink-muted:#5C665F;
+    --line:#D7DED8;
+    --accent:#1F6F5C;
+    --accent-soft:#E4EEEA;
+    --warn:#B8863A;
+    --warn-soft:#F5EBDA;
+    --critical:#A83E2C;
+    --critical-soft:#F5E3DE;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .display{font-family:'Space Grotesk',sans-serif;}
+
+  header.top{
+    padding:22px 28px 18px;
+    border-bottom:1px solid var(--line);
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  header.top h1{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:20px;
+    font-weight:700;
+    margin:0;
+    letter-spacing:-0.01em;
+  }
+  header.top .tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--ink-muted);
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+  }
+
+  .layout{
+    display:grid;
+    grid-template-columns:400px 1fr;
+    gap:0;
+    min-height:calc(100vh - 68px);
+  }
+  @media (max-width:900px){
+    .layout{grid-template-columns:1fr;}
+  }
+
+  .rail{
+    border-right:1px solid var(--line);
+    padding:24px;
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+  }
+  .panel{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:18px;
+  }
+  .panel h2{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:13px;
+    font-weight:600;
+    margin:0 0 12px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--ink-muted);
+  }
+  textarea{
+    width:100%;
+    min-height:130px;
+    resize:vertical;
+    border:1px solid var(--line);
+    border-radius:3px;
+    padding:10px 12px;
+    font-family:'IBM Plex Sans',sans-serif;
+    font-size:13.5px;
+    line-height:1.5;
+    color:var(--ink);
+    background:var(--surface);
+  }
+  textarea:focus, input:focus, select:focus{
+    outline:2px solid var(--accent);
+    outline-offset:1px;
+  }
+  select, input[type=text]{
+    width:100%;
+    border:1px solid var(--line);
+    border-radius:3px;
+    padding:8px 10px;
+    font-family:'IBM Plex Sans',sans-serif;
+    font-size:13.5px;
+    background:var(--surface);
+    color:var(--ink);
+  }
+  label.field-label{
+    display:block;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    color:var(--ink-muted);
+    margin:12px 0 5px;
+  }
+  label.field-label:first-child{margin-top:0;}
+  button.primary{
+    margin-top:14px;
+    width:100%;
+    background:var(--accent);
+    color:#fff;
+    border:none;
+    border-radius:3px;
+    padding:11px 14px;
+    font-family:'IBM Plex Sans',sans-serif;
+    font-weight:600;
+    font-size:13.5px;
+    cursor:pointer;
+    transition:background .15s ease;
+  }
+  button.primary:hover{background:#195A4A;}
+  button.primary:disabled{background:var(--ink-muted);cursor:not-allowed;}
+  button.secondary{
+    background:transparent;
+    border:1px solid var(--line);
+    border-radius:3px;
+    padding:8px 12px;
+    font-family:'IBM Plex Sans',sans-serif;
+    font-size:12.5px;
+    font-weight:500;
+    color:var(--ink);
+    cursor:pointer;
+  }
+  button.secondary:hover{border-color:var(--ink-muted);}
+
+  /* pipeline trace */
+  .trace-step{
+    display:flex;
+    gap:12px;
+    padding:12px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .trace-step:last-child{border-bottom:none;}
+  .trace-num{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    width:20px;height:20px;
+    border-radius:50%;
+    border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+    color:var(--ink-muted);
+    background:var(--surface-alt);
+  }
+  .trace-step.active .trace-num{border-color:var(--accent);color:var(--accent);}
+  .trace-step.done .trace-num{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .trace-body{flex:1;min-width:0;}
+  .trace-title{font-size:12.5px;font-weight:600;color:var(--ink-muted);}
+  .trace-step.active .trace-title, .trace-step.done .trace-title{color:var(--ink);}
+  .trace-detail{font-size:12.5px;color:var(--ink-muted);margin-top:4px;line-height:1.5;}
+  .pulse{
+    display:inline-block;width:6px;height:6px;border-radius:50%;
+    background:var(--accent);margin-right:6px;
+    animation:pulse 1s infinite ease-in-out;
+  }
+  @keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+
+  .kv{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+  .badge{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    padding:2px 7px;
+    border-radius:20px;
+    background:var(--surface-alt);
+    color:var(--ink-muted);
+    border:1px solid var(--line);
+  }
+  .badge.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent;}
+  .badge.critical{background:var(--critical-soft);color:var(--critical);border-color:transparent;}
+  .badge.accent{background:var(--accent-soft);color:var(--accent);border-color:transparent;}
+
+  /* review panel */
+  .review-field{margin-bottom:12px;}
+  .review-field label{
+    display:block;font-size:11px;text-transform:uppercase;
+    letter-spacing:0.05em;color:var(--ink-muted);margin-bottom:4px;
+  }
+  .review-field textarea, .review-field input{width:100%;font-size:13px;}
+  .review-field textarea{min-height:44px;}
+  .missing-list{
+    list-style:none;padding:0;margin:4px 0 0;
+    display:flex;flex-direction:column;gap:4px;
+  }
+  .missing-list li{
+    font-size:12.5px;color:var(--warn);
+    background:var(--warn-soft);
+    border-radius:3px;padding:5px 8px;
+  }
+  .review-actions{display:flex;gap:8px;margin-top:16px;}
+  .review-actions button{flex:1;}
+  button.approve{background:var(--accent);color:#fff;border:none;}
+  button.reject{background:transparent;color:var(--critical);border:1px solid var(--critical);}
+
+  /* main / backlog table */
+  main.content{padding:24px 28px;}
+  .content-head{
+    display:flex;justify-content:space-between;align-items:baseline;
+    margin-bottom:14px;flex-wrap:wrap;gap:8px;
+  }
+  .content-head h2{
+    font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600;margin:0;
+  }
+  .content-head .count{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-muted);}
+
+  table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:4px;overflow:hidden;}
+  thead th{
+    text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:0.05em;
+    color:var(--ink-muted);padding:10px 12px;border-bottom:1px solid var(--line);
+    background:var(--surface-alt);cursor:pointer;user-select:none;white-space:nowrap;
+  }
+  thead th:hover{color:var(--ink);}
+  tbody td{padding:11px 12px;font-size:13px;border-bottom:1px solid var(--line);vertical-align:top;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr.new-row{background:var(--accent-soft);}
+  tbody tr.merged td{color:var(--ink-muted);text-decoration:line-through;}
+  .score-cell{font-family:'IBM Plex Mono',monospace;font-weight:600;}
+  .id-cell{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-muted);white-space:nowrap;}
+  .summary-cell{max-width:340px;}
+  .empty-note{font-size:12px;color:var(--ink-muted);margin-top:10px;line-height:1.5;}
+
+  ::placeholder{color:#9AA39C;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>Intake Console</h1>
+  <span class="tag">AI intake &amp; prioritization — prototype</span>
+</header>
+
+<div class="layout">
+  <div class="rail">
+
+    <div class="panel">
+      <h2>New Request <span class="badge warn" style="margin-left:6px;">Demo mode — sample runs</span></h2>
+      <label class="field-label">Choose an example request</label>
+      <select id="example-select">
+        <option value="ptoTracking">"Our PTO request process is chaotic, need something better"</option>
+        <option value="attritionDup">"Leadership asked again for attrition numbers by team — no live dashboard"</option>
+        <option value="erUrgent">"Got an ER complaint, need help coordinating the investigation this week"</option>
+      </select>
+      <button class="primary" id="submit-btn">Run through pipeline</button>
+      <p style="font-size:11.5px;color:var(--ink-muted);margin:10px 0 0;line-height:1.5;">This public version replays pre-recorded pipeline runs instead of calling the AI live, so it works without an API key. <a href="https://claude.ai" style="color:var(--accent);">See the live version</a> for open-ended input.</p>
+    </div>
+
+    <div class="panel" id="trace-panel" style="display:none;">
+      <h2>Pipeline Trace</h2>
+      <div id="trace-steps"></div>
+    </div>
+
+    <div class="panel" id="review-panel" style="display:none;">
+      <h2>Human Review</h2>
+      <div id="review-body"></div>
+    </div>
+
+  </div>
+
+  <main class="content">
+    <div class="content-head">
+      <h2>Ranked Backlog <span class="tag" style="font-weight:400;">— sorted by RICE score</span></h2>
+      <span class="count" id="row-count"></span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th data-sort="id">ID</th>
+          <th data-sort="summary">Request</th>
+          <th data-sort="team">Team</th>
+          <th data-sort="status">Status</th>
+          <th data-sort="score">RICE ▾</th>
+        </tr>
+      </thead>
+      <tbody id="backlog-body"></tbody>
+    </table>
+    <p class="empty-note">Rows in green were added and approved during this session. Struck-through rows were identified as duplicates and merged into an earlier ticket. Click a column header to sort.</p>
+  </main>
+</div>
+
+<script>
+/* ---------- Backlog: pre-reviewed sample data ---------- */
+const backlog = [
+  {id:"TICKET-008", summary:"Coordinate a policy-mandated ER investigation with a response window this week.", team:"Employee Relations & Compliance", status:"active", reach:8, impact:3, confidence:9, effort:1, alignment:"aligned"},
+  {id:"TICKET-001", summary:"Standing dashboard for attrition trends by team and level, currently pulled manually.", team:"People Data & Analytics", status:"active", reach:8, impact:3, confidence:8, effort:2, alignment:"aligned"},
+  {id:"TICKET-002", summary:"Better tracking for ER case status and deadlines — currently a spreadsheet, near-miss last month.", team:"Employee Relations & Compliance", status:"active", reach:6, impact:3, confidence:8, effort:2, alignment:"aligned"},
+  {id:"TICKET-016", summary:"Redesign the full onboarding journey, pre-boarding through 30 days (clarified scope of TICKET-005).", team:"People Solutions", status:"active", reach:7, impact:3, confidence:7, effort:2, alignment:"aligned"},
+  {id:"TICKET-018", summary:"Track how HRBP support requests map to stated People-team priorities.", team:"People Partners", status:"active", reach:5, impact:2, confidence:6, effort:2, alignment:"aligned"},
+  {id:"TICKET-017", summary:"Light-touch review of the intake process itself, ahead of next planning cycle.", team:"Pilot Proposal", status:"active", reach:5, impact:2, confidence:6, effort:1, alignment:"partial"},
+  {id:"TICKET-015", summary:"Standard framework for how managers communicate org changes during reorgs.", team:"People Partners", status:"active", reach:6, impact:2, confidence:7, effort:2, alignment:"partial"},
+  {id:"TICKET-006", summary:"Review the HRBP-to-manager handoff process during team reorgs.", team:"People Partners", status:"active", reach:5, impact:2, confidence:6, effort:2, alignment:"partial"},
+  {id:"TICKET-012", summary:"Consolidate engagement survey reporting into a single org-wide rollup.", team:"People Data & Analytics", status:"active", reach:5, impact:2, confidence:6, effort:2, alignment:"partial"},
+  {id:"TICKET-013", summary:"Pilot: predictive model to flag teams at elevated attrition risk.", team:"Pilot Proposal", status:"active", reach:4, impact:2, confidence:4, effort:2, alignment:"not_stated"},
+  {id:"TICKET-011", summary:"Update the onboarding checklist — references two retired tools.", team:"People Solutions", status:"active", reach:3, impact:1, confidence:8, effort:1, alignment:"not_stated"},
+  {id:"TICKET-007", summary:"Simple standard template for quarterly team-health updates.", team:"People Partners", status:"active", reach:2, impact:1, confidence:8, effort:1, alignment:"not_stated"},
+  {id:"TICKET-003", summary:"Pilot: AI assistant to pre-screen and route inbound People-team requests.", team:"Pilot Proposal", status:"active", reach:3, impact:2, confidence:5, effort:2, alignment:"not_stated"},
+  {id:"TICKET-009", summary:"Lightweight auto-tagging tool to route inbound requests by keyword.", team:"Pilot Proposal", status:"active", reach:3, impact:1, confidence:5, effort:1, alignment:"not_stated"},
+  {id:"TICKET-004", summary:"Attrition dashboard — duplicate, merged into TICKET-001.", team:"People Data & Analytics", status:"merged → TICKET-001", reach:0,impact:0,confidence:0,effort:1, alignment:"n/a"},
+  {id:"TICKET-010", summary:"Attrition dashboard — duplicate, merged into TICKET-001.", team:"People Data & Analytics", status:"merged → TICKET-001", reach:0,impact:0,confidence:0,effort:1, alignment:"n/a"},
+  {id:"TICKET-014", summary:"ER case deadline tracking — duplicate, merged into TICKET-002.", team:"Employee Relations & Compliance", status:"merged → TICKET-002", reach:0,impact:0,confidence:0,effort:1, alignment:"n/a"},
+  {id:"TICKET-005", summary:"Onboarding process is a mess — superseded by clarified TICKET-016.", team:"People Solutions", status:"superseded → TICKET-016", reach:0,impact:0,confidence:0,effort:1, alignment:"n/a"},
+];
+backlog.forEach(t => { t.score = (t.reach*t.impact*t.confidence)/t.effort; t.isNew=false; });
+
+let sortKey = "score", sortDir = -1;
+
+/* ---------- Rendering ---------- */
+function riceBadgeClass(score){
+  if(score >= 100) return "critical";
+  if(score >= 40) return "accent";
+  return "";
+}
+function alignBadge(a){
+  if(a==="aligned") return '<span class="badge accent">aligned</span>';
+  if(a==="partial") return '<span class="badge warn">partial</span>';
+  if(a==="n/a") return "";
+  return '<span class="badge">not stated</span>';
+}
+function renderTable(){
+  const tbody = document.getElementById("backlog-body");
+  const rows = [...backlog];
+  rows.sort((a,b)=>{
+    let av=a[sortKey], bv=b[sortKey];
+    if(typeof av==="string"){ av=av.toLowerCase(); bv=bv.toLowerCase(); }
+    if(av<bv) return -1*sortDir;
+    if(av>bv) return 1*sortDir;
+    return 0;
+  });
+  tbody.innerHTML = rows.map(t=>{
+    const merged = t.status !== "active";
+    return `<tr class="${t.isNew?'new-row':''} ${merged?'merged':''}">
+      <td class="id-cell">${t.id}</td>
+      <td class="summary-cell">${t.summary}</td>
+      <td>${t.team}</td>
+      <td>${merged? t.status : (t.isNew?'<span class="badge accent">new — approved</span>':'active')} ${!merged?alignBadge(t.alignment):''}</td>
+      <td class="score-cell"><span class="badge ${riceBadgeClass(t.score)}">${merged?'—':t.score.toFixed(1)}</span></td>
+    </tr>`;
+  }).join("");
+  document.getElementById("row-count").textContent = rows.filter(r=>r.status==="active").length + " active";
+}
+document.querySelectorAll("thead th").forEach(th=>{
+  th.addEventListener("click",()=>{
+    const key = th.dataset.sort;
+    if(sortKey===key) sortDir*=-1; else { sortKey=key; sortDir=-1; }
+    renderTable();
+  });
+});
+renderTable();
+
+/* ---------- Pipeline trace rendering ---------- */
+const traceStepsMeta = [
+  {key:"scope", label:"Scoping"},
+  {key:"dedup", label:"Duplicate check"},
+  {key:"score", label:"Prioritization score"},
+];
+function renderTrace(state){
+  const el = document.getElementById("trace-steps");
+  el.innerHTML = traceStepsMeta.map((s,i)=>{
+    const st = state[s.key];
+    const cls = st.status==="done" ? "done" : st.status==="active" ? "active" : "";
+    let detail = "";
+    if(st.status==="active") detail = `<span class="pulse"></span>working…`;
+    else if(st.status==="done") detail = st.detailHtml;
+    return `<div class="trace-step ${cls}">
+      <div class="trace-num">${i+1}</div>
+      <div class="trace-body">
+        <div class="trace-title">${s.label}</div>
+        <div class="trace-detail">${detail}</div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+/* ---------- Demo mode: pre-recorded pipeline runs (no live API) ---------- */
+const demoRuns = {
+  ptoTracking: {
+    scopeResult: {
+      ask_summary: "Improve the PTO request process, currently described as chaotic.",
+      request_type: "unclear",
+      requesting_team: "People Solutions",
+      urgency: "no_urgency_signal",
+      urgency_evidence: null,
+      effort_estimate: "unclear",
+      effort_reasoning: "No scope, current tooling, or success criteria stated.",
+      missing_information: ["What's broken about the current process", "Desired end state", "Any deadline"],
+      confidence: "low"
+    },
+    dedupResult: { verdict: "no_match", matches: [] },
+    scoreResult: {
+      reach: 4, reach_reasoning: "PTO affects most employees, but scope is unclear.",
+      impact: 1, impact_reasoning: "Cannot assess impact without a defined problem.",
+      confidence_score: 2, confidence_reasoning: "Extraction confidence was low; too little to size accurately.",
+      effort: 2, alignment: "not_stated", alignment_reasoning: "No stated link to a People-team priority.",
+      recommended_team: "People Solutions", recommended_team_reasoning: "Closest match to HR systems/process ownership."
+    }
+  },
+  attritionDup: {
+    scopeResult: {
+      ask_summary: "Standing view of attrition by team; leadership keeps requesting it manually.",
+      request_type: "tooling_or_dashboard",
+      requesting_team: "People Data & Analytics",
+      urgency: "expressed_urgency_no_deadline",
+      urgency_evidence: "\"Leadership asked again\" implies recurring pressure, no hard date.",
+      effort_estimate: "medium",
+      effort_reasoning: "Requires pulling and reconciling multiple data sources into one view.",
+      missing_information: ["Target refresh frequency", "Which systems hold the source data"],
+      confidence: "high"
+    },
+    dedupResult: {
+      verdict: "likely_duplicate",
+      matches: [
+        {ticket_id:"TICKET-001", similarity:"high", reasoning:"Same attrition-dashboard need, already active in backlog."},
+        {ticket_id:"TICKET-004", similarity:"high", reasoning:"Prior duplicate already merged into TICKET-001."}
+      ]
+    },
+    scoreResult: {
+      reach: 8, reach_reasoning: "Affects org-wide leadership reporting.",
+      impact: 3, impact_reasoning: "Recurring leadership pain point, high visibility.",
+      confidence_score: 8, confidence_reasoning: "Clear ask, well-understood scope from existing ticket.",
+      effort: 2, alignment: "aligned", alignment_reasoning: "Matches existing prioritized reporting need.",
+      recommended_team: "People Data & Analytics", recommended_team_reasoning: "Same owner as the existing active ticket."
+    }
+  },
+  erUrgent: {
+    scopeResult: {
+      ask_summary: "Coordinate an ER investigation for a new complaint, needed this week.",
+      request_type: "investigation_or_response",
+      requesting_team: "Employee Relations & Compliance",
+      urgency: "explicit_deadline",
+      urgency_evidence: "\"Need help... this week\" states a concrete near-term deadline.",
+      effort_estimate: "small",
+      effort_reasoning: "Coordination and tracking support, not a build — fast to stand up.",
+      missing_information: ["Whether this is a new case or extension of an existing one"],
+      confidence: "high"
+    },
+    dedupResult: {
+      verdict: "related_not_duplicate",
+      matches: [{ticket_id:"TICKET-008", similarity:"medium", reasoning:"Same request category (ER investigation support), different case."}]
+    },
+    scoreResult: {
+      reach: 7, reach_reasoning: "Affects the involved employees and requires cross-functional coordination.",
+      impact: 3, impact_reasoning: "Compliance-driven, real risk if delayed.",
+      confidence_score: 9, confidence_reasoning: "Clear scope and hard deadline stated directly.",
+      effort: 1, alignment: "aligned", alignment_reasoning: "Matches ER's compliance-mandated response obligations.",
+      recommended_team: "Employee Relations & Compliance", recommended_team_reasoning: "Direct case ownership, matches TICKET-008 pattern."
+    }
+  }
+};
+
+function wait(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+document.getElementById("submit-btn").addEventListener("click", runPipeline);
+
+async function runPipeline(){
+  const key = document.getElementById("example-select").value;
+  const run = demoRuns[key];
+
+  document.getElementById("submit-btn").disabled = true;
+  document.getElementById("trace-panel").style.display = "block";
+  document.getElementById("review-panel").style.display = "none";
+
+  const state = { scope:{status:"active"}, dedup:{status:"pending"}, score:{status:"pending"} };
+  renderTrace(state);
+  await wait(650);
+
+  const s = run.scopeResult;
+  state.scope = {status:"done", detailHtml: `<strong>${s.ask_summary}</strong><div class="kv">
+      <span class="badge">${s.request_type.replace(/_/g," ")}</span>
+      <span class="badge">${s.effort_estimate} effort</span>
+      <span class="badge ${s.urgency==='explicit_deadline'?'critical':s.urgency==='expressed_urgency_no_deadline'?'warn':''}">${s.urgency.replace(/_/g," ")}</span>
+      <span class="badge ${s.confidence==='low'?'warn':''}">${s.confidence} confidence</span>
+    </div>`};
+  renderTrace(state);
+  state.dedup = {status:"active"};
+  renderTrace(state);
+  await wait(650);
+
+  const d = run.dedupResult;
+  const matchHtml = d.matches.length
+    ? d.matches.map(m=>`<div style="margin-top:4px;">→ <span class="mono">${m.ticket_id}</span> <span class="badge ${m.similarity==='high'?'critical':m.similarity==='medium'?'warn':''}">${m.similarity}</span> — ${m.reasoning}</div>`).join("")
+    : "<em>No overlapping tickets found.</em>";
+  state.dedup = {status:"done", detailHtml:`<strong>${d.verdict.replace(/_/g," ")}</strong>${matchHtml}`};
+  renderTrace(state);
+  state.score = {status:"active"};
+  renderTrace(state);
+  await wait(650);
+
+  const sc = run.scoreResult;
+  const riceScore = (sc.reach*sc.impact*sc.confidence_score)/sc.effort;
+  state.score = {status:"done", detailHtml:`<strong class="mono">RICE = ${riceScore.toFixed(1)}</strong>
+      <div class="kv">
+        <span class="badge">reach ${sc.reach}</span>
+        <span class="badge">impact ${sc.impact}</span>
+        <span class="badge">confidence ${sc.confidence_score}</span>
+        <span class="badge">effort ${sc.effort}</span>
+        ${alignBadge(sc.alignment)}
+      </div>
+      <div style="margin-top:6px;">Suggested owner: <strong>${sc.recommended_team}</strong> — ${sc.recommended_team_reasoning}</div>`};
+  renderTrace(state);
+
+  showReviewPanel({raw:"", submitter:"", scopeResult:s, dedupResult:d, scoreResult:sc, riceScore});
+  document.getElementById("submit-btn").disabled = false;
+}
+
+/* ---------- Human-in-the-loop review ---------- */
+function showReviewPanel(draft){
+  const panel = document.getElementById("review-panel");
+  const body = document.getElementById("review-body");
+  const s = draft.scopeResult, d = draft.dedupResult, sc = draft.scoreResult;
+
+  const missingHtml = s.missing_information && s.missing_information.length
+    ? `<ul class="missing-list">${s.missing_information.map(m=>`<li>Missing: ${m}</li>`).join("")}</ul>`
+    : "";
+
+  const dupWarning = d.verdict==="likely_duplicate"
+    ? `<div class="badge critical" style="display:inline-block;margin-bottom:8px;">flagged as likely duplicate — review before approving</div>`
+    : "";
+
+  body.innerHTML = `
+    ${dupWarning}
+    <div class="review-field">
+      <label>Ask summary</label>
+      <textarea id="rf-summary">${s.ask_summary}</textarea>
+    </div>
+    <div class="review-field">
+      <label>Requesting team</label>
+      <input type="text" id="rf-team" value="${s.requesting_team}">
+    </div>
+    <div class="review-field">
+      <label>Recommended owner</label>
+      <input type="text" id="rf-owner" value="${sc.recommended_team}">
+    </div>
+    ${missingHtml}
+    <div class="review-field">
+      <label>RICE score (editable)</label>
+      <input type="text" id="rf-score" value="${draft.riceScore.toFixed(1)}">
+    </div>
+    <div class="review-actions">
+      <button class="secondary reject" id="reject-btn">Send back</button>
+      <button class="primary approve" id="approve-btn">Approve &amp; add to backlog</button>
+    </div>
+  `;
+  panel.style.display = "block";
+  panel.scrollIntoView({behavior:"smooth", block:"nearest"});
+
+  document.getElementById("approve-btn").onclick = ()=>{
+    const nextNum = backlog.length + 1;
+    backlog.push({
+      id:`TICKET-NEW-${String(nextNum).padStart(3,"0")}`,
+      summary: document.getElementById("rf-summary").value,
+      team: document.getElementById("rf-team").value,
+      status:"active",
+      reach:sc.reach, impact:sc.impact, confidence:sc.confidence_score, effort:sc.effort,
+      score: parseFloat(document.getElementById("rf-score").value) || draft.riceScore,
+      alignment: sc.alignment,
+      isNew:true
+    });
+    renderTable();
+    panel.style.display = "none";
+    document.getElementById("raw-input").value = "";
+    document.getElementById("submitter-input").value = "";
+  };
+  document.getElementById("reject-btn").onclick = ()=>{
+    panel.style.display = "none";
+    alert("Sent back for clarification — in a real system this would notify the requestor with the missing_information list.");
+  };
+}
+</script>
+</body>
+</html>
